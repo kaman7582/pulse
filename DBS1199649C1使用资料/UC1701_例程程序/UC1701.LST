@@ -1,0 +1,284 @@
+C51 COMPILER V9.01   UC1701                                                                08/06/2014 23:19:49 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE UC1701
+OBJECT MODULE PLACED IN UC1701.OBJ
+COMPILER INVOKED BY: D:\keil4\C51\BIN\C51.EXE UC1701.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1             
+   2          
+   3          #include "reg51.h"
+   4          #include "absacc.h"
+   5          #define unchar  unsigned char
+   6          #define unint   unsigned int 
+   7          //--------------------------------------------------------- 4线SPI接口 驱动
+   8                                                                                                                                                            
+   9          sbit    RSTB    =P3^4;
+  10          
+  11          sbit    SDI     =P3^7;
+  12          sbit    SCL             =P3^6;
+  13          sbit    CS0     =P3^3;
+  14          sbit    RS      =P3^5;
+  15          
+  16          sbit    KEY         =P3^2;
+  17          
+  18          unchar code graphic1[]=
+  19          {
+  20          0x80,0xF0,0x10,0x10,0xD0,0x40,0x60,0x20,0x20,0x20,0x80,0xC0,0xC0,0x40,0xC0,0xE0,
+  21          0xF0,0xF8,0xFE,0x9F,0xCD,0xF5,0xE1,0xF0,0xF8,0xF8,0xFC,0xF4,0xF0,0xF0,0xF8,0xD8,
+  22          0xC8,0x40,0x00,0x00,0x00,0x00,0x00,0x80,0x00,0xC0,0xE0,0xF8,0xF0,0xF8,0xFC,0xFE,
+  23          0xFC,0xFC,0xFE,0xFE,0xFF,0xFC,0xFE,0xFF,0xFE,0xFE,0xFF,0xFF,0xFC,0xFE,0xFA,0xF8,
+  24          0xFC,0xE4,0xF0,0xD0,0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  25          0x00,0x00,0x80,0xC0,0xC0,0xE0,0xE0,0xF0,0xE0,0xF0,0xF0,0xF8,0xF8,0xE8,0xE8,0xA0,
+  26          0x0B,0x1E,0x1E,0x3F,0x7D,0xBC,0xB8,0xB8,0xBC,0xDC,0xDD,0xFF,0xFE,0xFF,0x7F,0x7F,
+  27          0xFF,0xFF,0xFF,0xFF,0x7F,0x5F,0x5F,0x57,0x17,0x97,0xC7,0xFF,0xFF,0xFF,0xFF,0xFF,
+  28          0xFF,0xFF,0x66,0xF4,0xFC,0xFE,0xFC,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x7F,0x3F,
+  29          0xDF,0x0F,0x0F,0x07,0x03,0x03,0x01,0x01,0xC1,0xE1,0xF1,0xFB,0xFF,0xFF,0xFF,0xFF,
+  30          0xFF,0xFF,0xFF,0xFF,0xFD,0xC9,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xC0,0xF0,0xFC,
+  31          0xFE,0xFF,0xFF,0xFF,0x0F,0x07,0x03,0x07,0x07,0x0F,0x0F,0x1F,0x1F,0x17,0x17,0x05,
+  32          0x00,0x01,0x03,0x03,0x07,0x07,0x0F,0x1F,0x0F,0x1F,0x0D,0x09,0x01,0x00,0xF0,0xF8,
+  33          0xFC,0xFC,0xFC,0xFF,0xFF,0xFF,0xFF,0xBF,0x9F,0xDF,0xFF,0xFF,0xDF,0xEF,0xFF,0xFB,
+  34          0xFD,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x7F,0x3F,0x1F,0x17,0x1B,0x1D,0x3E,0x3F,0x75,
+  35          0x65,0xF6,0xF0,0xF0,0xF0,0xF4,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFB,0xDF,
+  36          0xEF,0xE3,0xF3,0xE0,0xE0,0xF1,0xF8,0xE0,0xF0,0xF8,0xF0,0xFC,0xFF,0xFF,0xFF,0xFF,
+  37          0xFF,0xFF,0x3F,0x0F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  38          0x00,0x00,0x82,0x02,0x9E,0xF3,0xFD,0xEF,0xE7,0x70,0x70,0x38,0x3C,0x3C,0x3F,0x1F,
+  39          0x1F,0x1F,0x3F,0x3F,0x3F,0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0x7F,0x3F,0x3F,
+  40          0x3F,0x1F,0x1F,0x0F,0x0F,0x0F,0x0F,0x0F,0x07,0x87,0xC6,0x66,0x6E,0xBE,0xFE,0xFC,
+  41          0x0C,0x0C,0x04,0x04,0x0D,0x01,0x03,0x0F,0x1F,0x1F,0x0F,0x1F,0x1F,0x3F,0x1F,0x1F,
+  42          0x3F,0x1F,0x3F,0x3F,0x3F,0x7F,0x7F,0x7F,0x7F,0xEF,0xEF,0xE7,0xE7,0x67,0x63,0x21,
+  43          0x61,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  44          0x00,0x00,0x03,0x03,0x01,0x01,0xC0,0xC0,0x00,0x00,0x00,0x00,0xC0,0xC0,0x40,0x40,
+  45          0x40,0xC0,0x80,0x00,0x00,0x80,0xC0,0x40,0x40,0x40,0x40,0x00,0xC0,0xC0,0x40,0x40,
+  46          0x40,0xC0,0x80,0x00,0x00,0xC0,0xC0,0x40,0x40,0x40,0x41,0x01,0xC2,0xC3,0x41,0x44,
+  47          0x40,0x40,0x00,0x00,0x80,0xC0,0x40,0x40,0x40,0x40,0x40,0x00,0xC0,0xC0,0x00,0x00,
+  48          0x00,0x00,0xC0,0xC0,0x00,0x04,0xC6,0xC2,0x03,0x03,0x07,0x05,0x00,0xC0,0xC0,0x00,
+  49          0xC0,0xC0,0x00,0x00,0x80,0xC0,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+  50          0x00,0x00,0x00,0x70,0x7C,0x1F,0x13,0x13,0x1F,0x7C,0x70,0x00,0x7F,0x7F,0x44,0x44,
+  51          0x44,0x7F,0x3B,0x00,0x1F,0x3F,0x60,0x40,0x40,0x40,0x40,0x00,0x7F,0x7F,0x40,0x40,
+  52          0x40,0x60,0x3F,0x1F,0x00,0x7F,0x7F,0x44,0x44,0x44,0x40,0x00,0x7F,0x7F,0x04,0x04,
+  53          0x04,0x00,0x00,0x1F,0x3F,0x60,0x44,0x44,0x44,0x7C,0x7C,0x00,0x7F,0x7F,0x04,0x04,
+  54          0x04,0x04,0x7F,0x7F,0x00,0x00,0x7F,0x7F,0x00,0x40,0x40,0x40,0x40,0x7F,0x3F,0x00,
+  55          0x7F,0x7F,0x0E,0x1B,0x31,0x60,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+C51 COMPILER V9.01   UC1701                                                                08/06/2014 23:19:49 PAGE 2   
+
+  56          };
+  57          void Init_S6B33B();
+  58          void Write_S6B33B_COM(unchar COMDADA_4SPI);
+  59          void Write_S6B33B_DISPLAY_DATA_serial_4SPI(unchar DADA_4SPI);
+  60          void Delay_ms(unsigned long value);
+  61          void HDReset();
+  62          void Keypress(void);
+  63          void clear_screen(unchar xx);
+  64          void Display_pic1();
+  65          void Display_fangkuang();
+  66          
+  67          void main()
+  68          {       
+  69   1              Init_S6B33B();
+  70   1              while(1)
+  71   1              {
+  72   2      //       clear_screen(0x00);
+  73   2      //      Delay_ms(1000);
+  74   2               clear_screen(0xff);
+  75   2              Delay_ms(1000);
+  76   2               clear_screen(0x55);
+  77   2              Delay_ms(1000);
+  78   2               clear_screen(0xaa);
+  79   2              Delay_ms(1000);
+  80   2               clear_screen(0x00);
+  81   2               Display_fangkuang();
+  82   2               Delay_ms(1000);
+  83   2               clear_screen(0x00);
+  84   2               Display_pic1();
+  85   2               Keypress();
+  86   2               }
+  87   1      
+  88   1      }
+  89          
+  90          //--------------------------------------------------------------------------
+  91          
+  92          void Init_S6B33B()
+  93          {
+  94   1              HDReset();
+  95   1              Delay_ms(100);
+  96   1      
+  97   1             Write_S6B33B_COM(0xe2);           //systen reset
+  98   1      
+  99   1             Write_S6B33B_COM(0x2c);          //set power control 
+ 100   1             Write_S6B33B_COM(0x2e);          //set power control 
+ 101   1             Write_S6B33B_COM(0x2f);          //set power control 
+ 102   1                         
+ 103   1             Write_S6B33B_COM(0x25);          //set vlcd registor radio
+ 104   1      
+ 105   1             Write_S6B33B_COM(0x81);     //
+ 106   1             Write_S6B33B_COM(0x1a);
+ 107   1      
+ 108   1             Write_S6B33B_COM(0xa2);
+ 109   1                         
+ 110   1             Write_S6B33B_COM(0xc8);
+ 111   1             Write_S6B33B_COM(0xa0);     //
+ 112   1      
+ 113   1             Write_S6B33B_COM(0xaf);     //
+ 114   1      
+ 115   1      
+ 116   1      }
+ 117          
+C51 COMPILER V9.01   UC1701                                                                08/06/2014 23:19:49 PAGE 3   
+
+ 118          
+ 119          void clear_screen(unchar xx)
+ 120          {
+ 121   1      unchar i,j;
+ 122   1      for(i=0;i<9;i++)
+ 123   1              {
+ 124   2                      CS0=0;
+ 125   2                      Write_S6B33B_COM(0xb0+i);
+ 126   2                  Write_S6B33B_COM(0x10);
+ 127   2                      Write_S6B33B_COM(0x00);
+ 128   2                      for(j=0;j<132;j++)
+ 129   2                      {
+ 130   3                              Write_S6B33B_DISPLAY_DATA_serial_4SPI(xx);
+ 131   3                      }
+ 132   2               }
+ 133   1      }
+ 134          
+ 135          void Display_pic1()
+ 136          {
+ 137   1              unint i,j,adressd=0;
+ 138   1      
+ 139   1              for(i=0;i<6;i++)
+ 140   1              {
+ 141   2                      CS0=0;
+ 142   2                      Write_S6B33B_COM(0xb0+i);
+ 143   2                  Write_S6B33B_COM(0x10);
+ 144   2                      Write_S6B33B_COM(0x00);
+ 145   2                      for(j=0;j<96;j++)
+ 146   2                      {
+ 147   3                              Write_S6B33B_DISPLAY_DATA_serial_4SPI(graphic1[adressd]);
+ 148   3                              adressd++;
+ 149   3                      }
+ 150   2              }
+ 151   1      } 
+ 152          void Display_fangkuang()
+ 153          {
+ 154   1              unint i,j;
+ 155   1              for(i=0;i<5;i++)
+ 156   1              {
+ 157   2                      CS0=0;
+ 158   2                      Write_S6B33B_COM(0xb0+i);
+ 159   2                  Write_S6B33B_COM(0x10);
+ 160   2                      Write_S6B33B_COM(0x00);
+ 161   2                      Write_S6B33B_DISPLAY_DATA_serial_4SPI(0xff);
+ 162   2                      for(j=0;j<94;j++)
+ 163   2                      {
+ 164   3                              Write_S6B33B_DISPLAY_DATA_serial_4SPI(0x00);
+ 165   3                      }
+ 166   2                      Write_S6B33B_DISPLAY_DATA_serial_4SPI(0xff);
+ 167   2               }
+ 168   1      
+ 169   1                      CS0=0;
+ 170   1                      Write_S6B33B_COM(0xb5);
+ 171   1                  Write_S6B33B_COM(0x10);
+ 172   1                      Write_S6B33B_COM(0x00);
+ 173   1                      Write_S6B33B_DISPLAY_DATA_serial_4SPI(0xff);
+ 174   1                      for(j=0;j<94;j++)
+ 175   1                      {
+ 176   2                              Write_S6B33B_DISPLAY_DATA_serial_4SPI(0x80);
+ 177   2                      }
+ 178   1                      Write_S6B33B_DISPLAY_DATA_serial_4SPI(0xff);
+ 179   1      
+C51 COMPILER V9.01   UC1701                                                                08/06/2014 23:19:49 PAGE 4   
+
+ 180   1                      CS0=0;
+ 181   1                      Write_S6B33B_COM(0xb8); //set page
+ 182   1                  Write_S6B33B_COM(0x10);     //set address LSB
+ 183   1                      Write_S6B33B_COM(0x00); //set address HSB
+ 184   1      
+ 185   1                      for(j=0;j<96;j++)
+ 186   1                      {
+ 187   2                              Write_S6B33B_DISPLAY_DATA_serial_4SPI(0x01);
+ 188   2                      }
+ 189   1              
+ 190   1      }
+ 191          //***************************************************************************SPI4
+ 192          void Write_S6B33B_COM(unchar COMDADA_4SPI)
+ 193          {
+ 194   1              unchar bit8;
+ 195   1              RS=0;
+ 196   1              CS0=0;
+ 197   1              for(bit8=0;bit8<8;bit8++)
+ 198   1              {
+ 199   2                      SCL=0;
+ 200   2                      if((COMDADA_4SPI&0x80)==0x80)
+ 201   2                      SDI=1;
+ 202   2                      else            
+ 203   2                      SDI=0;
+ 204   2      //              SCL=0;
+ 205   2                      SCL=1;
+ 206   2                      COMDADA_4SPI=(COMDADA_4SPI<<1);
+ 207   2      
+ 208   2              }
+ 209   1        //  CS1=1;
+ 210   1                              
+ 211   1      }
+ 212          
+ 213          void Write_S6B33B_DISPLAY_DATA_serial_4SPI(unchar DADA_4SPI)
+ 214          {   
+ 215   1              unchar bit8;
+ 216   1              RS=1;
+ 217   1              CS0=0;                          
+ 218   1      
+ 219   1              for(bit8=0;bit8<8;bit8++)
+ 220   1              {
+ 221   2                      SCL=0;
+ 222   2                      if((DADA_4SPI&0x80)==0x80)
+ 223   2                      SDI=1;
+ 224   2                      else
+ 225   2                      SDI=0;
+ 226   2                      SCL=1;
+ 227   2                      DADA_4SPI=(DADA_4SPI<<1);
+ 228   2      
+ 229   2              }
+ 230   1      //      CS1=1;
+ 231   1      }
+ 232          
+ 233                          
+ 234          void Delay_ms(unsigned long value)
+ 235          {
+ 236   1              unint i,j;
+ 237   1          for (i=0;i<value;i++)
+ 238   1                      for (j=0;j<500;j++);
+ 239   1      }
+ 240          
+ 241          void HDReset()
+C51 COMPILER V9.01   UC1701                                                                08/06/2014 23:19:49 PAGE 5   
+
+ 242          {
+ 243   1              RSTB=0;
+ 244   1              Delay_ms(2);
+ 245   1              RSTB=1;
+ 246   1              Delay_ms(4);
+ 247   1      }
+ 248          
+ 249          void Keypress()
+ 250                  {
+ 251   1              while(KEY)
+ 252   1              Delay_ms(10);
+ 253   1              }               
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    589    ----
+   CONSTANT SIZE    =    576    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      17
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
