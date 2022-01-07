@@ -32,6 +32,7 @@
 #define TIME_OUT_MS        2000
 #define MAX_DISPLAY_ITEMS   3
 #define CAPACITY_LEVEL      50
+#define BLINKING_TIME       200 //ms
 typedef unsigned char  uint8;
 typedef unsigned short uint16;
 

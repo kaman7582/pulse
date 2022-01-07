@@ -9,6 +9,9 @@
 void key_up_action();
 void key_down_action();
 void change_data(unsigned short DAC_data);
+void timeout_start();
+void timeout_stop();
+int  timeout_check();
 
 const char *pulse_setting[PULSE_SETTING_MAX]={"5pC","10pC","20pC","50pC","100pC","200pC","500pC","1000pC","2000pC"};
 //float voltage_level[PULSE_SETTING_MAX]={5/CAPACITY_LEVEL,10/CAPACITY_LEVEL,20/CAPACITY_LEVEL,50/CAPACITY_LEVEL,100/CAPACITY_LEVEL,200/CAPACITY_LEVEL,500/CAPACITY_LEVEL,10,10};
@@ -17,7 +20,7 @@ float voltage_level[]={0.1,0.2,0.4,1,2,4,10,10,10};
 static UC1701 lcd(PIN_SCK,PIN_MOSI,PIN_CS,REGS_PIN,RSTB_PIN);
 timeout_ctrl_t tm_ctrl={0,0,TIME_OUT_MS};
 
-menu_pos_t m_pos[item_max]={{0,2,5},{10,0,1},{65,0,1}};
+menu_pos_t m_pos[item_max]={{0,2,7},{10,0,1},{65,0,1}};
 btn_ctrl_t btns[btn_key_max]={{BTN_UP,btn_state_init,timeout_init,key_up_action},{BTN_DOWN,btn_state_init,timeout_init,key_down_action}};
 int current_idx = DEFAULT_PULSE_IDX;
 int current_power = 100;
@@ -47,11 +50,19 @@ void display_battery()
 
 }
 
+void display_hint()
+{
+    lcd.writePosString("#############",0,7);
+}
+
 void display_screen()
 {
+    
     display_pulse();
     display_battery();
 }
+int previous_dis = 1;
+int blinking_start = 0, bl_cur_tm = 0;
 
 void key_up_action()
 {
@@ -63,9 +74,14 @@ void key_up_action()
     {
         current_idx = current_idx-1;
     }
-    //clear_pulse();
-    //display_pulse();
+    clear_pulse();
+    display_pulse();
+    //lcd.drawLine(7);
+    //display_screen();
+    btns[btn_key_up].btn_state = btn_state_init;
   //current_idx = current_idx%PULSE_SETTING_MAX;
+    //blinking
+    blinking_start = millis();
 }
 
 void key_down_action()
@@ -78,20 +94,66 @@ uint8 btn_key_get(uint8 btn)
     return (btn == BTN_UP)?btn_key_up:btn_key_down;
 }
 
+int blinking_check()
+{
+    bl_cur_tm = millis();
+    int gap = bl_cur_tm - blinking_start;
+    if(gap < 200)
+        return timeout_in;
+    blinking_start = millis();
+    return timeout_out;
+}
+
+void  blinking_menu()
+{
+    if(blinking_check() == timeout_out)
+    {
+        if(previous_dis == 1)
+        {
+            previous_dis = 0;
+            clear_pulse();
+        }
+        else if(previous_dis == 0)
+        {
+            previous_dis =1;
+            display_pulse();
+        }
+    }
+}
+
 void btn_action(uint8 btn_key,int val)
 {
     if(KEY_PRESSED == val && btns[btn_key].btn_state == btn_state_init)
     {
         btns[btn_key].btn_state = btn_state_pressed;
         delayMicroseconds(1000);
+        
     }
     if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_pressed)
     {
         btns[btn_key].btn_state = btn_state_released;
-        //Serial.println("key pressed");
         delayMicroseconds(1000);
         btns[btn_key].timeout_state = timeout_init;
+        generate_wave = 0;
+        timeout_start();
         btns[btn_key].btn_action();
+        
+    }
+    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_init&&(generate_wave ==0))
+    {
+            if(timeout_check() == timeout_out)
+            {
+                generate_wave = 1;
+                //timeout_stop();
+                clear_pulse();
+                display_pulse();
+                //display_screen();
+            }
+            else if(timeout_check() == timeout_in)
+            {
+                blinking_menu();
+                //display_hint();
+            }
     }
 }
 
@@ -105,8 +167,8 @@ void btn_up_isr()
 
 void btn_state_check(int btn_pin)
 {
-    int val = digitalRead(BTN_UP);
-    uint8 key = btn_key_get(BTN_UP);
+    int val = digitalRead(btn_pin);
+    uint8 key = btn_key_get(btn_pin);
     btn_action(key,val);
 }
 
@@ -125,6 +187,17 @@ void timeout_stop()
     tm_ctrl.key_triggle = 0;
 }
 
+
+int timeout_blinking()
+{
+    int cur_tm = millis();
+    if(tm_ctrl.key_triggle == 0)
+        return timeout_init;
+    int tm_gap = cur_tm - tm_ctrl.key_time;
+    int val = tm_gap/BLINKING_TIME;
+    return ((val %2)==1)?1:0;
+}
+
 int timeout_check()
 {
     int cur_tm = millis();
@@ -134,7 +207,6 @@ int timeout_check()
         return timeout_in;
     else
     {
-        timeout_stop();
         return timeout_out;
     }
     return timeout_init;
@@ -142,6 +214,7 @@ int timeout_check()
 //start to blinking
 int previous_time = 0;
 int dis_blank = 0,dis_data = 0;
+#if 0
 void check_btn_state(uint8 btn)
 {
     if(btns[btn].btn_state == btn_state_released && btns[btn].timeout_state == timeout_init)
@@ -198,6 +271,7 @@ void check_btn_state(uint8 btn)
         //todo setpulse
     }
 }
+#endif
 
 void voltage_set(float vout)
 {
@@ -229,8 +303,8 @@ void gpio_init()
     Serial.begin(115200);
     for(int i =0 ; i < btn_key_max;i++)
     {
-        pinMode(BTN_UP,OUTPUT);
-        digitalWrite(BTN_UP,1);
+        pinMode(btns[i].btn_num,OUTPUT);
+        digitalWrite(btns[i].btn_num,1);
     }
     //pinMode(BTN_UP,OUTPUT);
     //digitalWrite(BTN_UP,1);
@@ -272,7 +346,6 @@ void loop() {
   
   for(int i =0 ; i < btn_key_max; i++)
   {
-
-      check_btn_state(i);
+      btn_state_check(btns[i].btn_num);
   }
 }
