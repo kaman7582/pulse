@@ -29,10 +29,11 @@
 
 #define MAX_ROW             8
 #define MAX_COL             96
-#define TIME_OUT_MS        2000
+#define TIME_VOUT_MS        2000
+#define TIME_BLINK_MS       200
 #define MAX_DISPLAY_ITEMS   3
 #define CAPACITY_LEVEL      50
-#define BLINKING_TIME       200 //ms
+#define BLINKING_TIME       500 //ms
 typedef unsigned char  uint8;
 typedef unsigned short uint16;
 
@@ -73,19 +74,28 @@ enum timeout_state
     timeout_out
 };
 
-typedef struct btn_ctrl_s
-{
-    uint8 btn_num;
-    uint8 btn_state;
-    uint8 timeout_state;
-    void (*btn_action)();
-}btn_ctrl_t;
-
 
 typedef struct timeout_ctrl_s
 {
     int key_time;
     int key_triggle;
+    int timeout_state;
     int timeout_time;
 }timeout_ctrl_t;
+
+enum timeout_type
+{
+    timeout_type_blink,
+    timeout_type_vout,
+    timeout_type_max
+};
+
+typedef struct btn_ctrl_s
+{
+    uint8 btn_num;
+    uint8 btn_state;
+    void (*btn_action)();
+}btn_ctrl_t;
+
+
 #endif

@@ -18,14 +18,18 @@ const char *pulse_setting[PULSE_SETTING_MAX]={"5pC","10pC","20pC","50pC","100pC"
 float voltage_level[]={0.1,0.2,0.4,1,2,4,10,10,10};
 
 static UC1701 lcd(PIN_SCK,PIN_MOSI,PIN_CS,REGS_PIN,RSTB_PIN);
-timeout_ctrl_t tm_ctrl={0,0,TIME_OUT_MS};
+//timeout_ctrl_t tm_ctrl_up={0,0,timeout_init,TIME_OUT_MS};
+//timeout_ctrl_t tm_ctrl_down={0,0,timeout_init,TIME_OUT_MS};
 
 menu_pos_t m_pos[item_max]={{0,2,7},{10,0,1},{65,0,1}};
-btn_ctrl_t btns[btn_key_max]={{BTN_UP,btn_state_init,timeout_init,key_up_action},{BTN_DOWN,btn_state_init,timeout_init,key_down_action}};
+btn_ctrl_t btns[btn_key_max]={{BTN_UP,btn_state_init,key_up_action},{BTN_DOWN,btn_state_init,key_down_action}};
+timeout_ctrl_t tm_ctrl[timeout_type_max]={{0,0,timeout_init,TIME_BLINK_MS},{0,0,timeout_init,TIME_VOUT_MS}};
 int current_idx = DEFAULT_PULSE_IDX;
 int current_power = 100;
 int generate_wave = 1;
-
+#define STOP_I2C_WAVE()   generate_wave=0
+#define START_I2C_WAVE()  generate_wave=1
+#define GET_I2C_WAVE()    generate_wave
 void display_pulse()
 {
   menu_pos_t *pos = &m_pos[pulse_item];
@@ -50,19 +54,47 @@ void display_battery()
 
 }
 
-void display_hint()
-{
-    lcd.writePosString("#############",0,7);
-}
 
 void display_screen()
 {
-    
     display_pulse();
     display_battery();
 }
+
+void reset_display_screen()
+{
+    lcd.reset();
+    display_screen();
+}
 int previous_dis = 1;
 int blinking_start = 0, bl_cur_tm = 0;
+
+void timeout_start(int type)
+{
+    tm_ctrl[type].key_time = millis();
+    tm_ctrl[type].key_triggle = 1;
+}
+
+void timeout_stop(int type)
+{
+    tm_ctrl[type].key_time = 0;
+    tm_ctrl[type].key_triggle = 0;
+}
+
+
+int timeout_check(int type)
+{
+    int cur_tm = millis();
+    if(tm_ctrl[type].key_triggle == 0)
+        return timeout_init;
+    if((cur_tm - tm_ctrl[type].key_time)<tm_ctrl[type].timeout_time)
+        return timeout_in;
+    else
+    {
+        return timeout_out;
+    }
+    return timeout_init;
+}
 
 void key_up_action()
 {
@@ -74,10 +106,11 @@ void key_up_action()
     {
         current_idx = current_idx-1;
     }
-    clear_pulse();
-    display_pulse();
+    //clear_pulse();
+    //display_pulse();
     //lcd.drawLine(7);
     //display_screen();
+    reset_display_screen();
     btns[btn_key_up].btn_state = btn_state_init;
   //current_idx = current_idx%PULSE_SETTING_MAX;
     //blinking
@@ -93,7 +126,7 @@ uint8 btn_key_get(uint8 btn)
 {
     return (btn == BTN_UP)?btn_key_up:btn_key_down;
 }
-
+#if 0
 int blinking_check()
 {
     bl_cur_tm = millis();
@@ -120,40 +153,80 @@ void  blinking_menu()
         }
     }
 }
+#endif
 
+void timeout_start_all()
+{
+    for(int i  =0 ; i < timeout_type_max;i++)
+    {
+        timeout_start(i);
+    }
+}
+
+void timeout_stop_all()
+{
+    for(int i  =0 ; i < timeout_type_max;i++)
+    {
+        timeout_stop(i);
+    }
+
+}
+int current_display = 1;
 void btn_action(uint8 btn_key,int val)
 {
     if(KEY_PRESSED == val && btns[btn_key].btn_state == btn_state_init)
     {
         btns[btn_key].btn_state = btn_state_pressed;
-        delayMicroseconds(1000);
-        
+        delayMicroseconds(5000);//button shaking
+        timeout_stop_all();
     }
-    if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_pressed)
+    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_pressed)
     {
         btns[btn_key].btn_state = btn_state_released;
-        delayMicroseconds(1000);
-        btns[btn_key].timeout_state = timeout_init;
-        generate_wave = 0;
-        timeout_start();
+        delayMicroseconds(5000);
+        STOP_I2C_WAVE();
+        //timeout_start(timeout_type_vout);
+        //timeout_start(timeout_type_blink);
+        timeout_start_all();
+        //lcd.reset();//add reset lcd incase of anything happens
         btns[btn_key].btn_action();
         
     }
-    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_init&&(generate_wave ==0))
+    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_init&&(GET_I2C_WAVE() ==0))
     {
-            if(timeout_check() == timeout_out)
+            if(timeout_check(timeout_type_vout) == timeout_out)
             {
-                generate_wave = 1;
-                //timeout_stop();
-                clear_pulse();
-                display_pulse();
+                START_I2C_WAVE();
+                //timeout_stop(timeout_type_vout);
+                //timeout_stop(timeout_type_blink);
+                timeout_stop_all();
+                //clear_pulse();
+                //display_pulse();
+                reset_display_screen();
                 //display_screen();
             }
-            else if(timeout_check() == timeout_in)
+            #if 1
+            else if(timeout_check(timeout_type_vout) == timeout_in)
             {
-                blinking_menu();
+                //blinking_menu();
                 //display_hint();
+                if(timeout_check(timeout_type_blink) == timeout_out)
+                {
+                    if(current_display == 1)//display data,then clear the screen
+                    {
+                        clear_pulse();
+                        current_display = 0;
+                    }
+                    else
+                    {
+                        display_pulse();
+                        current_display = 1;
+                    }
+                    delayMicroseconds(1000);
+                    timeout_start(timeout_type_blink);
+                }
             }
+            #endif
     }
 }
 
@@ -173,7 +246,7 @@ void btn_state_check(int btn_pin)
 }
 
 
-
+#if 0
 //blinking three seconds
 void timeout_start()
 {
@@ -211,6 +284,8 @@ int timeout_check()
     }
     return timeout_init;
 }
+#endif
+
 //start to blinking
 int previous_time = 0;
 int dis_blank = 0,dis_data = 0;
