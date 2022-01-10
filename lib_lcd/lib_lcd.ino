@@ -12,6 +12,7 @@ void change_data(unsigned short DAC_data);
 void timeout_start();
 void timeout_stop();
 int  timeout_check();
+void set_output_power();
 
 const char *pulse_setting[PULSE_SETTING_MAX]={"5pC","10pC","20pC","50pC","100pC","200pC","500pC","1000pC","2000pC"};
 //float voltage_level[PULSE_SETTING_MAX]={5/CAPACITY_LEVEL,10/CAPACITY_LEVEL,20/CAPACITY_LEVEL,50/CAPACITY_LEVEL,100/CAPACITY_LEVEL,200/CAPACITY_LEVEL,500/CAPACITY_LEVEL,10,10};
@@ -204,6 +205,7 @@ void btn_action(uint8 btn_key,int val)
                 //display_pulse();
                 reset_display_screen();
                 //display_screen();
+                set_output_power();
             }
             #if 1
             else if(timeout_check(timeout_type_vout) == timeout_in)
@@ -373,6 +375,18 @@ void generate_pulse()
 
 }
 
+void set_output_power()
+{
+    //set_val = (set_val == 0)?vout:0;
+    float vout = voltage_level[current_idx];
+    voltage_set(vout);
+    delayMicroseconds(1000);
+    voltage_set(vout);
+    //delayMicroseconds(WAVE_DELAY);
+
+}
+
+
 void gpio_init()
 {
     Serial.begin(115200);
@@ -390,6 +404,7 @@ void gpio_init()
 
 void setup() {
   gpio_init();
+  set_output_power();
   lcd.begin();
   lcd.clear();
   //lcd.setCursor(0,0);
@@ -400,6 +415,7 @@ void setup() {
   //lcd.writeString("100%");
   display_screen();
   //gpio_init();
+  
 }
 
 void loop() {
@@ -416,8 +432,8 @@ void loop() {
   //{
     //  Serial.println("button pressed");
   //}
-  if(generate_wave)
-      generate_pulse();
+  //if(generate_wave)
+  //    generate_pulse();
   
   for(int i =0 ; i < btn_key_max; i++)
   {
