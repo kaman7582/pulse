@@ -28,9 +28,27 @@ timeout_ctrl_t tm_ctrl[timeout_type_max]={{0,0,timeout_init,TIME_BLINK_MS},{0,0,
 int current_idx = DEFAULT_PULSE_IDX;
 int current_power = 100;
 int generate_wave = 1;
-#define STOP_I2C_WAVE()   generate_wave=0
-#define START_I2C_WAVE()  generate_wave=1
-#define GET_I2C_WAVE()    generate_wave
+
+void init_pwm()
+{
+    return;
+    ledcSetup(PWM_CHANNEL, PWM_FREQENCY, PWM_RESOLUTION); // 设置通道
+    ledcAttachPin(PWM_PIN, PWM_CHANNEL);  // 将通道与对应的引脚连接
+    ledcWrite(PWM_CHANNEL, PWM_PERCENT);// generate 150ms wave
+}
+
+void stop_pwm()
+{
+    ledcDetachPin(PWM_PIN);
+}
+
+void start_pwm()
+{
+    ledcAttachPin(PWM_PIN, PWM_CHANNEL);
+}
+//#define STOP_I2C_WAVE()   generate_wave=0
+//#define START_I2C_WAVE()  generate_wave=1
+//#define GET_I2C_WAVE()    generate_wave
 void display_pulse()
 {
   menu_pos_t *pos = &m_pos[pulse_item];
@@ -112,10 +130,10 @@ void key_up_action()
     //lcd.drawLine(7);
     //display_screen();
     reset_display_screen();
-    btns[btn_key_up].btn_state = btn_state_init;
+    btns[btn_key_up].btn_state = btn_state_timeout;
   //current_idx = current_idx%PULSE_SETTING_MAX;
     //blinking
-    blinking_start = millis();
+    //blinking_start = millis();
 }
 
 void key_down_action()
@@ -175,37 +193,42 @@ void timeout_stop_all()
 int current_display = 1;
 void btn_action(uint8 btn_key,int val)
 {
-    if(KEY_PRESSED == val && btns[btn_key].btn_state == btn_state_init)
+    if(KEY_PRESSED == val && (btns[btn_key].btn_state == btn_state_init||btns[btn_key].btn_state == btn_state_timeout))
     {
         btns[btn_key].btn_state = btn_state_pressed;
-        delayMicroseconds(5000);//button shaking
+        delayMicroseconds(5000);
         timeout_stop_all();
+        //button shaking
+        stop_pwm();
     }
     else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_pressed)
     {
         btns[btn_key].btn_state = btn_state_released;
         delayMicroseconds(5000);
-        STOP_I2C_WAVE();
+        //STOP_I2C_WAVE();
         //timeout_start(timeout_type_vout);
         //timeout_start(timeout_type_blink);
         timeout_start_all();
         //lcd.reset();//add reset lcd incase of anything happens
         btns[btn_key].btn_action();
-        
     }
-    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_init&&(GET_I2C_WAVE() ==0))
+    else if(KEY_RELEASED == val && btns[btn_key].btn_state == btn_state_timeout)
     {
             if(timeout_check(timeout_type_vout) == timeout_out)
             {
-                START_I2C_WAVE();
+                //START_I2C_WAVE();
                 //timeout_stop(timeout_type_vout);
                 //timeout_stop(timeout_type_blink);
                 timeout_stop_all();
                 //clear_pulse();
                 //display_pulse();
-                reset_display_screen();
-                //display_screen();
+                //reset_display_screen();
+                display_screen();
                 set_output_power();
+                //Serial.println("timeout1");
+                delayMicroseconds(1000);
+                start_pwm();
+                btns[btn_key].btn_state = btn_state_init;
             }
             #if 1
             else if(timeout_check(timeout_type_vout) == timeout_in)
@@ -224,7 +247,7 @@ void btn_action(uint8 btn_key,int val)
                         display_pulse();
                         current_display = 1;
                     }
-                    delayMicroseconds(1000);
+                    //delayMicroseconds(1000);
                     timeout_start(timeout_type_blink);
                 }
             }
@@ -379,9 +402,10 @@ void set_output_power()
 {
     //set_val = (set_val == 0)?vout:0;
     float vout = voltage_level[current_idx];
+    //Serial.printf("set out:%f\n\r",vout);
     voltage_set(vout);
-    delayMicroseconds(1000);
-    voltage_set(vout);
+    //delayMicroseconds(1000);
+    //voltage_set(vout);
     //delayMicroseconds(WAVE_DELAY);
 
 }
@@ -400,6 +424,7 @@ void gpio_init()
     //pinMode(BTN_UP,OUTPUT);
     //attachInterrupt(digitalPinToInterrupt(BTN_UP), btn_up_isr, CHANGE);
     Wire.begin(SDA_PIN,SCL_PIN,I2C_HZ);
+    init_pwm();
 }
 
 void setup() {

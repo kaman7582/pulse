@@ -37,6 +37,14 @@
 typedef unsigned char  uint8;
 typedef unsigned short uint16;
 
+
+//define for pwm
+#define  PWM_FREQENCY   4    // 频率
+#define  PWM_CHANNEL    0    // 通道
+#define  PWM_RESOLUTION    8   // 分辨率
+#define  PWM_PIN        12
+#define  PWM_PERCENT    153
+/**********************/
 typedef struct menu_pos_s
 {
     int column;
@@ -58,6 +66,7 @@ enum btn_state
     btn_state_init,
     btn_state_pressed,
     btn_state_released,
+    btn_state_timeout,
 };
 
 enum btn_key_list
